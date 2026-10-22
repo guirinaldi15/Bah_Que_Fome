@@ -1,0 +1,837 @@
+import React, { useState } from 'react';
+
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+
+import type {
+  NativeStackScreenProps
+} from '@react-navigation/native-stack';
+
+import type {
+  RootStackParamList
+} from '../types/navigation';
+
+import {
+  useApp,
+  DELIVERY_FEE
+} from '../contexts/AppContext';
+
+import type {
+  DeliveryMode,
+  LocationType,
+  PaymentMethod
+} from '../contexts/AppContext';
+
+import { COLORS } from '../styles/theme';
+import { formatPrice } from '../data/products';
+
+type Props = NativeStackScreenProps<
+  RootStackParamList,
+  'Checkout'
+>;
+
+type Step = 'delivery' | 'payment' | 'confirmed';
+
+const PAYMENT_OPTIONS: {
+  id: PaymentMethod;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  {
+    id: 'pix',
+    label: 'PIX (simulado)',
+    icon: 'qr-code-outline'
+  },
+  {
+    id: 'credit',
+    label: 'Cartão de crédito (simulado)',
+    icon: 'card-outline'
+  },
+  {
+    id: 'debit',
+    label: 'Cartão de débito (simulado)',
+    icon: 'card-outline'
+  },
+  {
+    id: 'cash',
+    label: 'Dinheiro (simulado)',
+    icon: 'cash-outline'
+  },
+  {
+    id: 'wallet',
+    label: 'Carteira digital (simulada)',
+    icon: 'wallet-outline'
+  }
+];
+
+export default function CheckoutScreen({
+  navigation
+}: Props) {
+  const {
+    cart,
+    cartTotal,
+    delivery,
+    setDelivery,
+    placeOrder,
+    activeOrder
+  } = useApp();
+
+  const [step, setStep] =
+    useState<Step>('delivery');
+
+  const [payment, setPayment] =
+    useState<PaymentMethod>('pix');
+
+  const [error, setError] = useState('');
+
+  const fee =
+    delivery.mode === 'delivery'
+      ? DELIVERY_FEE
+      : 0;
+
+  function patch(
+    field: keyof typeof delivery,
+    value: string
+  ) {
+    setDelivery((previous) => ({
+      ...previous,
+      [field]: value
+    }));
+  }
+
+  function advanceToPayment() {
+    if (
+      !delivery.name.trim() ||
+      !delivery.phone.trim()
+    ) {
+      setError('Informe seu nome e telefone.');
+      return;
+    }
+
+    if (
+      delivery.mode === 'delivery' &&
+      (
+        !delivery.street.trim() ||
+        !delivery.number.trim() ||
+        !delivery.district.trim() ||
+        !delivery.city.trim()
+      )
+    ) {
+      setError(
+        'Preencha rua, número, bairro e cidade para a entrega.'
+      );
+      return;
+    }
+
+    setError('');
+    setStep('payment');
+  }
+
+  function finishOrder() {
+    if (!placeOrder(payment)) {
+      Alert.alert(
+        'Carrinho vazio',
+        'Adicione produtos antes de finalizar.'
+      );
+      return;
+    }
+
+    setStep('confirmed');
+  }
+
+  function field(
+    label: string,
+    key: keyof typeof delivery,
+    placeholder = ''
+  ) {
+    return (
+      <View style={styles.field} key={key}>
+        <Text style={styles.label}>
+          {label}
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          value={String(delivery[key])}
+          onChangeText={(value) => patch(key, value)}
+          placeholder={placeholder || label}
+          placeholderTextColor="#969696"
+          autoCapitalize={
+            key === 'phone' || key === 'cep'
+              ? 'none'
+              : 'sentences'
+          }
+          keyboardType={
+            key === 'phone'
+              ? 'phone-pad'
+              : key === 'cep'
+                ? 'number-pad'
+                : 'default'
+          }
+        />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView
+      style={styles.page}
+      edges={['top', 'bottom']}
+    >
+      <View style={styles.header}>
+        <Pressable
+          disabled={step === 'confirmed'}
+          onPress={() =>
+            step === 'payment'
+              ? setStep('delivery')
+              : navigation.goBack()
+          }
+        >
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={COLORS.primary}
+          />
+        </Pressable>
+
+        <Text style={styles.headerTitle}>
+          {step === 'delivery'
+            ? 'Entrega ou retirada'
+            : step === 'payment'
+              ? 'Pagamento'
+              : 'Pedido confirmado'}
+        </Text>
+
+        <View style={{ width: 24 }} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : undefined
+        }
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          {step === 'delivery' && (
+            <>
+              <Text style={styles.heading}>
+                Como deseja receber?
+              </Text>
+
+              <View style={styles.choiceRow}>
+                {([
+                  [
+                    'delivery',
+                    'Entrega',
+                    'bicycle-outline'
+                  ],
+                  [
+                    'pickup',
+                    'Retirada',
+                    'storefront-outline'
+                  ]
+                ] as const).map(
+                  ([value, label, icon]) => (
+                    <Pressable
+                      key={value}
+                      style={[
+                        styles.choice,
+                        delivery.mode === value &&
+                          styles.selected
+                      ]}
+                      onPress={() =>
+                        patch(
+                          'mode',
+                          value as DeliveryMode
+                        )
+                      }
+                    >
+                      <Ionicons
+                        name={icon}
+                        size={26}
+                        color={COLORS.primary}
+                      />
+
+                      <Text style={styles.choiceText}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  )
+                )}
+              </View>
+
+              <View style={styles.note}>
+                <Ionicons
+                  name="time-outline"
+                  size={19}
+                  color={COLORS.primary}
+                />
+
+                <Text style={styles.noteText}>
+                  {delivery.mode === 'delivery'
+                    ? 'Previsão ilustrativa: cerca de 45 minutos. Taxa simulada de R$ 12,00.'
+                    : 'Previsão ilustrativa: cerca de 30 minutos. Sem taxa de entrega.'}
+                </Text>
+              </View>
+
+              <Text style={styles.heading}>
+                Dados de contato
+              </Text>
+
+              {field('Nome completo', 'name')}
+              {field(
+                'Telefone',
+                'phone',
+                '(00) 00000-0000'
+              )}
+
+              {delivery.mode === 'delivery' && (
+                <>
+                  <Text style={styles.heading}>
+                    Endereço de entrega
+                  </Text>
+
+                  <Text style={styles.label}>
+                    Tipo de local
+                  </Text>
+
+                  <View style={styles.chips}>
+                    {([
+                      ['residencia', 'Residência'],
+                      ['hotel', 'Hotel'],
+                      ['pousada', 'Pousada'],
+                      ['turistico', 'Ponto turístico']
+                    ] as [LocationType, string][]).map(
+                      ([value, label]) => (
+                        <Pressable
+                          key={value}
+                          style={[
+                            styles.chip,
+                            delivery.locationType ===
+                              value &&
+                              styles.chipSelected
+                          ]}
+                          onPress={() =>
+                            patch('locationType', value)
+                          }
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              delivery.locationType ===
+                                value &&
+                                styles.chipTextSelected
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </Pressable>
+                      )
+                    )}
+                  </View>
+
+                  {field(
+                    'CEP (preenchimento manual)',
+                    'cep',
+                    '00000-000'
+                  )}
+
+                  {field('Rua / avenida', 'street')}
+                  {field('Número', 'number')}
+                  {field('Bairro', 'district')}
+
+                  {field(
+                    'Cidade / UF',
+                    'city',
+                    'Ex.: Presidente Epitácio - SP'
+                  )}
+
+                  {field(
+                    'Complemento (opcional)',
+                    'complement'
+                  )}
+
+                  {field(
+                    'Ponto de referência (opcional)',
+                    'reference'
+                  )}
+
+                  {(
+                    delivery.locationType === 'hotel' ||
+                    delivery.locationType === 'pousada'
+                  ) && (
+                    <>
+                      {field(
+                        'Nome do hotel / pousada',
+                        'establishment'
+                      )}
+
+                      {field(
+                        'Número do quarto (opcional)',
+                        'room'
+                      )}
+                    </>
+                  )}
+
+                  {field(
+                    'Instruções para entrega (opcional)',
+                    'instructions',
+                    'Ex.: deixar na recepção'
+                  )}
+                </>
+              )}
+
+              {error !== '' && (
+                <Text style={styles.error}>
+                  {error}
+                </Text>
+              )}
+
+              <Pressable
+                style={styles.button}
+                onPress={advanceToPayment}
+              >
+                <Text style={styles.buttonText}>
+                  Continuar para pagamento
+                </Text>
+              </Pressable>
+            </>
+          )}
+
+          {step === 'payment' && (
+            <>
+              <Text style={styles.heading}>
+                Forma de pagamento
+              </Text>
+
+              <Text style={styles.small}>
+                Escolha apenas para demonstrar o
+                fluxo. Não haverá cobrança.
+              </Text>
+
+              {PAYMENT_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.id}
+                  style={[
+                    styles.payment,
+                    payment === option.id &&
+                      styles.paymentSelected
+                  ]}
+                  onPress={() =>
+                    setPayment(option.id)
+                  }
+                >
+                  <Ionicons
+                    name={option.icon}
+                    size={23}
+                    color={COLORS.primary}
+                  />
+
+                  <Text style={styles.paymentName}>
+                    {option.label}
+                  </Text>
+
+                  <Ionicons
+                    name={
+                      payment === option.id
+                        ? 'radio-button-on'
+                        : 'radio-button-off'
+                    }
+                    size={21}
+                    color={COLORS.primary}
+                  />
+                </Pressable>
+              ))}
+
+              <View style={styles.note}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
+
+                <Text style={styles.noteText}>
+                  Não informe dados reais de cartão.
+                  Nenhum pagamento ou PIX será realizado.
+                </Text>
+              </View>
+
+              <Text style={styles.heading}>
+                Resumo do pedido
+              </Text>
+
+              {cart.map((item) => (
+                <View
+                  key={item.product.id}
+                  style={styles.line}
+                >
+                  <Text style={styles.lineLabel}>
+                    {item.quantity}x {item.product.name}
+                  </Text>
+
+                  <Text style={styles.lineValue}>
+                    {formatPrice(
+                      item.product.price * item.quantity
+                    )}
+                  </Text>
+                </View>
+              ))}
+
+              <View style={styles.line}>
+                <Text style={styles.lineLabel}>
+                  Subtotal
+                </Text>
+
+                <Text style={styles.lineValue}>
+                  {formatPrice(cartTotal)}
+                </Text>
+              </View>
+
+              <View style={styles.line}>
+                <Text style={styles.lineLabel}>
+                  Entrega (
+                  {delivery.mode === 'pickup'
+                    ? 'retirada'
+                    : 'domicílio'}
+                  )
+                </Text>
+
+                <Text style={styles.lineValue}>
+                  {formatPrice(fee)}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.line,
+                  styles.totalLine
+                ]}
+              >
+                <Text style={styles.totalText}>
+                  Total
+                </Text>
+
+                <Text style={styles.totalText}>
+                  {formatPrice(cartTotal + fee)}
+                </Text>
+              </View>
+
+              <Pressable
+                style={styles.button}
+                onPress={finishOrder}
+              >
+                <Text style={styles.buttonText}>
+                  Confirmar pedido fictício
+                </Text>
+              </Pressable>
+            </>
+          )}
+
+          {step === 'confirmed' && activeOrder && (
+            <View style={styles.successBox}>
+              <Ionicons
+                name="checkmark-circle"
+                size={78}
+                color={COLORS.primary}
+              />
+
+              <Text style={styles.successTitle}>
+                Pedido confirmado!
+              </Text>
+
+              <Text style={styles.small}>
+                Pedido de demonstração {activeOrder.id}
+              </Text>
+
+              <Text style={styles.small}>
+                Total: {formatPrice(activeOrder.total)}
+              </Text>
+
+              <Text style={styles.small}>
+                Não foi enviada uma compra real.
+              </Text>
+
+              <Pressable
+                style={[
+                  styles.button,
+                  { alignSelf: 'stretch' }
+                ]}
+                onPress={() =>
+                  navigation.navigate('OrderTracking')
+                }
+              >
+                <Text style={styles.buttonText}>
+                  Acompanhar pedido
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() =>
+                  navigation.navigate('Home')
+                }
+              >
+                <Text style={styles.goHome}>
+                  Voltar ao início
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: COLORS.background
+  },
+
+  header: {
+    padding: 17,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border
+  },
+
+  headerTitle: {
+    color: COLORS.text,
+    fontWeight: '800',
+    fontSize: 17
+  },
+
+  content: {
+    padding: 20,
+    paddingBottom: 35,
+    flexGrow: 1
+  },
+
+  heading: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: 9,
+    marginBottom: 15
+  },
+
+  choiceRow: {
+    flexDirection: 'row',
+    gap: 12
+  },
+
+  choice: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    backgroundColor: '#FFF'
+  },
+
+  selected: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EDF4ED'
+  },
+
+  choiceText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '700'
+  },
+
+  note: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    padding: 13,
+    marginVertical: 17,
+    backgroundColor: '#EAF2EC',
+    borderRadius: 12
+  },
+
+  noteText: {
+    flex: 1,
+    color: COLORS.primary,
+    lineHeight: 18,
+    fontSize: 12
+  },
+
+  label: {
+    color: COLORS.text,
+    fontWeight: '700',
+    fontSize: 13,
+    marginBottom: 6
+  },
+
+  field: {
+    marginBottom: 14
+  },
+
+  input: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 11,
+    height: 48,
+    paddingHorizontal: 13,
+    color: COLORS.text
+  },
+
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 15
+  },
+
+  chip: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+
+  chipSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary
+  },
+
+  chipText: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '600'
+  },
+
+  chipTextSelected: {
+    color: '#FFF'
+  },
+
+  error: {
+    color: COLORS.danger,
+    marginBottom: 12,
+    fontWeight: '700'
+  },
+
+  button: {
+    padding: 17,
+    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+
+  buttonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800'
+  },
+
+  payment: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center'
+  },
+
+  paymentSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EDF4ED'
+  },
+
+  paymentName: {
+    flex: 1,
+    fontWeight: '600',
+    color: COLORS.text,
+    fontSize: 13
+  },
+
+  small: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+
+  line: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border
+  },
+
+  lineLabel: {
+    flex: 1,
+    color: COLORS.textSecondary,
+    fontSize: 13
+  },
+
+  lineValue: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700'
+  },
+
+  totalLine: {
+    borderBottomWidth: 0,
+    marginTop: 8
+  },
+
+  totalText: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: COLORS.primary
+  },
+
+  successBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 60
+  },
+
+  successTitle: {
+    fontSize: 25,
+    fontWeight: '800',
+    color: COLORS.primary
+  },
+
+  goHome: {
+    color: COLORS.primary,
+    padding: 15,
+    fontWeight: '700'
+  }
+});
