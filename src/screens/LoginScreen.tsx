@@ -18,6 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
 import { COLORS } from '../styles/theme';
 
+import DietaryRestrictionsSelector from '../components/DietaryRestrictionsSelector';
+
+import type {
+  DietaryRestriction,
+} from '../types/dietary';
+
 export default function LoginScreen() {
   const { signIn } = useApp();
 
@@ -27,6 +33,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+
+  const [dietaryRestrictions, setDietaryRestrictions] =
+    useState<DietaryRestriction[]>([]);
 
   function submit() {
     if (
@@ -38,8 +47,13 @@ export default function LoginScreen() {
       return;
     }
 
-    if (isRegister && password !== confirmPassword) {
-      setError('A confirmação de senha deve ser igual à senha.');
+    if (
+      isRegister &&
+      password !== confirmPassword
+    ) {
+      setError(
+        'A confirmação de senha deve ser igual à senha.'
+      );
       return;
     }
 
@@ -51,7 +65,10 @@ export default function LoginScreen() {
     signIn(
       isRegister
         ? name.trim().split(' ')[0]
-        : fallbackName
+        : fallbackName,
+      isRegister
+        ? dietaryRestrictions
+        : undefined
     );
   }
 
@@ -64,7 +81,11 @@ export default function LoginScreen() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : undefined
+        }
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -76,11 +97,11 @@ export default function LoginScreen() {
             </Text>
 
             <Text style={styles.logo}>
-              Bah,{'\n'}que Fome!!
+              Bah,{' \n'}que Fome!!
             </Text>
 
             <Text style={styles.subtitle}>
-              CUCINA ITALIANA &{'\n'}
+              CUCINA ITALIANA &{' \n'}
               CHOPERIA BRASILEIRA
             </Text>
           </View>
@@ -130,14 +151,21 @@ export default function LoginScreen() {
             />
 
             {isRegister && (
-              <TextInput
-                style={styles.input}
-                placeholder="Confirmar senha"
-                placeholderTextColor="#9D8E8B"
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirmar senha"
+                  placeholderTextColor="#9D8E8B"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+
+                <DietaryRestrictionsSelector
+                  selected={dietaryRestrictions}
+                  onChange={setDietaryRestrictions}
+                />
+              </>
             )}
 
             {error !== '' && (
@@ -151,7 +179,9 @@ export default function LoginScreen() {
               onPress={submit}
             >
               <Text style={styles.primaryText}>
-                {isRegister ? 'Cadastrar' : 'Entrar'}
+                {isRegister
+                  ? 'Cadastrar'
+                  : 'Entrar'}
               </Text>
 
               <Ionicons
@@ -163,9 +193,11 @@ export default function LoginScreen() {
 
             <Pressable
               style={styles.secondaryButton}
-              onPress={() =>
-                setIsRegister((value) => !value)
-              }
+              onPress={() => {
+                setIsRegister(value => !value);
+                setDietaryRestrictions([]);
+                setError('');
+              }}
             >
               <Text style={styles.secondaryText}>
                 {isRegister
@@ -202,12 +234,12 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: {
-    flex: 1
+    flex: 1,
   },
 
   container: {
     flex: 1,
-    backgroundColor: COLORS.wine
+    backgroundColor: COLORS.wine,
   },
 
   content: {
@@ -215,29 +247,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 26,
     paddingTop: 28,
     paddingBottom: 24,
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
 
   brandArea: {
     alignItems: 'center',
-    marginBottom: 24
+    marginBottom: 24,
   },
 
   flags: {
     fontSize: 26,
-    marginBottom: 14
+    marginBottom: 14,
   },
 
   logo: {
-    fontFamily: Platform.OS === 'ios'
-      ? 'Georgia'
-      : 'serif',
+    fontFamily:
+      Platform.OS === 'ios'
+        ? 'Georgia'
+        : 'serif',
     color: '#FFFFFF',
     fontSize: 52,
     textAlign: 'center',
     fontStyle: 'italic',
     fontWeight: 'bold',
-    lineHeight: 55
+    lineHeight: 55,
   },
 
   subtitle: {
@@ -246,7 +279,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     marginTop: 16,
-    lineHeight: 19
+    lineHeight: 19,
   },
 
   panel: {
@@ -254,20 +287,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.10)',
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)'
+    borderColor: 'rgba(255,255,255,0.18)',
   },
 
   heading: {
     color: '#FFFFFF',
     fontSize: 21,
-    fontWeight: '700'
+    fontWeight: '700',
   },
 
   helper: {
     color: '#F4DAD6',
     fontSize: 13,
     marginTop: 4,
-    marginBottom: 18
+    marginBottom: 18,
   },
 
   input: {
@@ -277,14 +310,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 12,
     fontSize: 15,
-    color: COLORS.text
+    color: COLORS.text,
   },
 
   error: {
     color: '#FFF1AA',
     fontSize: 12,
     marginBottom: 8,
-    textAlign: 'center'
+    textAlign: 'center',
   },
 
   primaryButton: {
@@ -295,13 +328,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10
+    gap: 10,
   },
 
   primaryText: {
     color: COLORS.wine,
     fontWeight: '800',
-    fontSize: 15
+    fontSize: 15,
   },
 
   secondaryButton: {
@@ -311,12 +344,12 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10
+    marginTop: 10,
   },
 
   secondaryText: {
     color: '#FFFFFF',
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
   guestButton: {
@@ -324,19 +357,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    marginTop: 23
+    marginTop: 23,
   },
 
   guestText: {
     color: '#FFF4DD',
     fontSize: 14,
-    textDecorationLine: 'underline'
+    textDecorationLine: 'underline',
   },
 
   demo: {
     color: '#EBC9C3',
     textAlign: 'center',
     fontSize: 11,
-    marginTop: 16
+    marginTop: 16,
   },
 });

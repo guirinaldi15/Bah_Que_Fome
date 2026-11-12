@@ -2,11 +2,14 @@ import React, {
   createContext,
   useContext,
   useMemo,
-  useState
+  useState,
 } from 'react';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Product } from '../data/products';
 import type { Cuisine } from '../types/navigation';
+import type { DietaryRestriction } from '../types/dietary';
 
 export type CartItem = {
   product: Product;
@@ -73,7 +76,7 @@ const initialDelivery: DeliveryInfo = {
   reference: '',
   establishment: '',
   room: '',
-  instructions: ''
+  instructions: '',
 };
 
 type AppContextValue = {
@@ -85,7 +88,13 @@ type AppContextValue = {
   delivery: DeliveryInfo;
   activeOrder: MockOrder | null;
 
-  signIn: (name: string) => void;
+  dietaryRestrictions: DietaryRestriction[];
+
+  signIn: (
+    name: string,
+    restrictions?: DietaryRestriction[]
+  ) => void;
+
   signOut: () => void;
   setCuisine: (cuisine: Cuisine) => void;
 
@@ -115,9 +124,9 @@ const AppContext = createContext<
 >(undefined);
 
 export function AppProvider({
-  children
+  children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   const [userName, setUserName] =
     useState<string | null>(null);
@@ -125,13 +134,42 @@ export function AppProvider({
   const [cuisine, setCuisine] =
     useState<Cuisine>('italiana');
 
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] =
+    useState<CartItem[]>([]);
 
   const [delivery, setDelivery] =
     useState<DeliveryInfo>(initialDelivery);
 
   const [activeOrder, setActiveOrder] =
     useState<MockOrder | null>(null);
+
+  const [dietaryRestrictions, setDietaryRestrictions] =
+    useState<DietaryRestriction[]>([]);
+
+  React.useEffect(() => {
+    async function loadDietaryRestrictions() {
+      try {
+        const saved = await AsyncStorage.getItem(
+          '@bahquefome:dietaryRestrictions'
+        );
+
+        if (saved) {
+          const parsed = JSON.parse(saved);
+
+          if (Array.isArray(parsed)) {
+            setDietaryRestrictions(parsed);
+          }
+        }
+      } catch (error) {
+        console.warn(
+          'Erro ao carregar restrições alimentares:',
+          error
+        );
+      }
+    }
+
+    loadDietaryRestrictions();
+  }, []);
 
   const cartCount = useMemo(
     () =>
@@ -152,11 +190,42 @@ export function AppProvider({
     [cart]
   );
 
+  function signIn(
+    name: string,
+    restrictions?: DietaryRestriction[]
+  ) {
+    setUserName(name);
+
+    if (restrictions !== undefined) {
+      setDietaryRestrictions(restrictions);
+
+      AsyncStorage.setItem(
+        '@bahquefome:dietaryRestrictions',
+        JSON.stringify(restrictions)
+      ).catch(error => {
+        console.warn(
+          'Erro ao salvar restrições alimentares:',
+          error
+        );
+      });
+    }
+  }
+
   function signOut() {
     setUserName(null);
     setCart([]);
     setDelivery(initialDelivery);
     setActiveOrder(null);
+    setDietaryRestrictions([]);
+
+    AsyncStorage.removeItem(
+      '@bahquefome:dietaryRestrictions'
+    ).catch(error => {
+      console.warn(
+        'Erro ao limpar restrições:',
+        error
+      );
+    });
   }
 
   function addToCart(
@@ -168,21 +237,27 @@ export function AppProvider({
       Math.floor(quantity)
     );
 
-    setCart((previous) => {
+    setCart(previous => {
       const exists = previous.some(
-        (item) => item.product.id === product.id
+        item => item.product.id === product.id
       );
 
       return exists
-        ? previous.map((item) =>
+        ? previous.map(item =>
             item.product.id === product.id
               ? {
                   ...item,
-                  quantity: item.quantity + amount
+                  quantity: item.quantity + amount,
                 }
               : item
           )
-        : [...previous, { product, quantity: amount }];
+        : [
+            ...previous,
+            {
+              product,
+              quantity: amount,
+            },
+          ];
     });
   }
 
@@ -190,16 +265,16 @@ export function AppProvider({
     productId: string,
     quantity: number
   ) {
-    setCart((previous) =>
+    setCart(previous =>
       quantity <= 0
         ? previous.filter(
-            (item) => item.product.id !== productId
+            item => item.product.id !== productId
           )
-        : previous.map((item) =>
+        : previous.map(item =>
             item.product.id === productId
               ? {
                   ...item,
-                  quantity: Math.floor(quantity)
+                  quantity: Math.floor(quantity),
                 }
               : item
           )
@@ -207,15 +282,23 @@ export function AppProvider({
   }
 
   function removeFromCart(productId: string) {
-    setCart((previous) =>
+    setCart(previous =>
       previous.filter(
-        (item) => item.product.id !== productId
+        item => item.product.id !== productId
       )
     );
   }
 
-  function placeOrder(payment: PaymentMethod): boolean {
-    if (cart.length === 0) return false;
+  function clearCart() {
+    setCart([]);
+  }
+
+  function placeOrder(
+    payment: PaymentMethod
+  ): boolean {
+    if (cart.length === 0) {
+      return false;
+    }
 
     const subtotal = cartTotal;
 
@@ -226,14 +309,14 @@ export function AppProvider({
 
     const order: MockOrder = {
       id: `BF-${Date.now().toString().slice(-6)}`,
-      items: cart.map((item) => ({ ...item })),
+      items: cart.map(item => ({ ...item })),
       subtotal,
       deliveryFee,
       total: subtotal + deliveryFee,
       delivery: { ...delivery },
       payment,
       statusIndex: 0,
-      createdAt: new Date().toLocaleString('pt-BR')
+      createdAt: new Date().toLocaleString('pt-BR'),
     };
 
     setActiveOrder(order);
@@ -243,8 +326,10 @@ export function AppProvider({
   }
 
   function advanceOrder() {
-    setActiveOrder((previous) => {
-      if (!previous) return null;
+    setActiveOrder(previous => {
+      if (!previous) {
+        return null;
+      }
 
       const lastStep =
         previous.delivery.mode === 'delivery'
@@ -256,7 +341,7 @@ export function AppProvider({
         statusIndex: Math.min(
           previous.statusIndex + 1,
           lastStep
-        )
+        ),
       };
     });
   }
@@ -271,16 +356,20 @@ export function AppProvider({
         cartTotal,
         delivery,
         activeOrder,
-        signIn: setUserName,
+        dietaryRestrictions,
+
+        signIn,
         signOut,
         setCuisine,
+
         addToCart,
         updateQuantity,
         removeFromCart,
-        clearCart: () => setCart([]),
+        clearCart,
+
         setDelivery,
         placeOrder,
-        advanceOrder
+        advanceOrder,
       }}
     >
       {children}
