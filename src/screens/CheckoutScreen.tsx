@@ -14,6 +14,7 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 import type {
   NativeStackScreenProps
@@ -44,6 +45,24 @@ type Props = NativeStackScreenProps<
 >;
 
 type Step = 'delivery' | 'payment' | 'confirmed';
+
+const brazilianStates: Record<string, string> = {
+  acre: 'AC', alagoas: 'AL', amapa: 'AP', amazonas: 'AM', bahia: 'BA',
+  ceara: 'CE', 'distrito federal': 'DF', 'espirito santo': 'ES',
+  goias: 'GO', maranhao: 'MA', 'mato grosso': 'MT',
+  'mato grosso do sul': 'MS', 'minas gerais': 'MG', para: 'PA',
+  paraiba: 'PB', parana: 'PR', pernambuco: 'PE', piaui: 'PI',
+  'rio de janeiro': 'RJ', 'rio grande do norte': 'RN',
+  'rio grande do sul': 'RS', rondonia: 'RO', roraima: 'RR',
+  'santa catarina': 'SC', 'sao paulo': 'SP', sergipe: 'SE', tocantins: 'TO',
+};
+
+function findStateCode(region: string | null) {
+  const normalized = region?.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .trim().toLowerCase().replace(/^estado de /, '').replace(/^br-/, '') ?? '';
+  const code = normalized.toUpperCase();
+  return Object.values(brazilianStates).includes(code) ? code : brazilianStates[normalized] ?? '';
+}
 
 const PAYMENT_OPTIONS: {
   id: PaymentMethod;
@@ -97,6 +116,10 @@ export default function CheckoutScreen({
   const [error, setError] = useState('');
   const [confirmedOrder, setConfirmedOrder] = useState<MockOrder | null>(null);
   const submittedOrder = useRef(false);
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
+  const locationRequest = useRef(0);
+  const pendingLocation = useRef(false);
 
   const fee =
     delivery.mode === 'delivery'
@@ -107,10 +130,74 @@ export default function CheckoutScreen({
     field: keyof typeof delivery,
     value: string
   ) {
+    if (field === 'mode' && value !== delivery.mode) {
+      cancelLocationLookup();
+    }
+
     setDelivery((previous) => ({
       ...previous,
       [field]: value
     }));
+  }
+
+  function cancelLocationLookup() {
+    ++locationRequest.current;
+    pendingLocation.current = false;
+    setLocating(false);
+    setLocationMessage('');
+  }
+
+  async function fillAddressFromLocation() {
+    if (pendingLocation.current) return;
+    const request = ++locationRequest.current;
+    const isCurrent = () => request === locationRequest.current && navigation.isFocused();
+
+    pendingLocation.current = true;
+    setLocating(true);
+    setLocationMessage('');
+
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!isCurrent()) return;
+      if (!permission.granted) {
+        setLocationMessage('Permissão de localização negada. Preencha o endereço manualmente.');
+        return;
+      }
+
+      const { coords } = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      if (!isCurrent()) return;
+      const [address] = await Location.reverseGeocodeAsync({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      if (!isCurrent()) return;
+
+      if (!address || (address.isoCountryCode && address.isoCountryCode !== 'BR')) {
+        setLocationMessage('Não foi encontrado um endereço no Brasil. Preencha os campos manualmente.');
+        return;
+      }
+
+      setDelivery(previous => ({
+        ...previous,
+        cep: previous.cep.trim() ? previous.cep : address.postalCode ?? '',
+        street: previous.street.trim() ? previous.street : address.street ?? '',
+        district: previous.district.trim() ? previous.district : address.district ?? '',
+        city: previous.city.trim() ? previous.city : address.city ?? '',
+        state: previous.state.trim() ? previous.state : findStateCode(address.region),
+      }));
+      setLocationMessage('Confira os campos preenchidos e informe o número e o complemento.');
+    } catch {
+      if (isCurrent()) {
+        setLocationMessage('Não foi possível localizar seu endereço. Preencha os campos manualmente.');
+      }
+    } finally {
+      if (request === locationRequest.current) {
+        pendingLocation.current = false;
+        if (navigation.isFocused()) setLocating(false);
+      }
+    }
   }
 
   function advanceToPayment() {
@@ -154,6 +241,7 @@ export default function CheckoutScreen({
     }
 
     setError('');
+    cancelLocationLookup();
     setStep('payment');
   }
 
@@ -329,6 +417,26 @@ export default function CheckoutScreen({
                   <Text style={styles.heading}>
                     Endereço de entrega
                   </Text>
+
+                  {Platform.OS !== 'web' && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ busy: locating, disabled: locating }}
+                      disabled={locating}
+                      onPress={fillAddressFromLocation}
+                      style={styles.locationButton}
+                    >
+                      <Ionicons name="locate-outline" size={20} color={COLORS.primary} />
+                      <Text style={styles.noteText}>
+                        {locating ? 'Buscando endereço…' : 'Usar minha localização'}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {locationMessage !== '' && (
+                    <Text accessibilityLiveRegion="polite" style={styles.small}>
+                      {locationMessage}
+                    </Text>
+                  )}
 
                   <Text style={styles.label}>
                     Tipo de local
@@ -620,6 +728,15 @@ export default function CheckoutScreen({
 }
 
 const styles = StyleSheet.create({
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 14,
+    backgroundColor: COLORS.muted,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
   page: {
     flex: 1,
     backgroundColor: COLORS.background

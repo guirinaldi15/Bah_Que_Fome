@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permita que o Bah, que Fome!! use sua localização para preencher o endereço de entrega."
+        }
+      ]
+    ]
   }
 }
