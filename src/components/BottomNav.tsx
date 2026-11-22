@@ -21,7 +21,7 @@ import type {
 import { useApp } from '../contexts/AppContext';
 import { COLORS } from '../styles/theme';
 
-type Screen = 'Home' | 'Menu' | 'Cart';
+type Screen = 'Home' | 'Menu' | 'Categories' | 'BuildMeal' | 'Cart' | 'Profile';
 
 export default function BottomNav({
   active

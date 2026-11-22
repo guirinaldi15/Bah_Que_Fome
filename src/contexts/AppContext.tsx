@@ -29,7 +29,8 @@ export type LocationType =
   | 'residencia'
   | 'hotel'
   | 'pousada'
-  | 'turistico';
+  | 'turistico'
+  | 'other';
 
 export type DeliveryInfo = {
   mode: DeliveryMode;
@@ -41,6 +42,7 @@ export type DeliveryInfo = {
   number: string;
   district: string;
   city: string;
+  state: string;
   complement: string;
   reference: string;
   establishment: string;
@@ -54,7 +56,7 @@ export type MockOrder = {
   subtotal: number;
   deliveryFee: number;
   total: number;
-  delivery: DeliveryInfo;
+  delivery: Pick<DeliveryInfo, 'mode'>;
   payment: PaymentMethod;
   statusIndex: number;
   createdAt: string;
@@ -72,6 +74,7 @@ const initialDelivery: DeliveryInfo = {
   number: '',
   district: '',
   city: '',
+  state: '',
   complement: '',
   reference: '',
   establishment: '',
@@ -87,12 +90,15 @@ type AppContextValue = {
   cartTotal: number;
   delivery: DeliveryInfo;
   activeOrder: MockOrder | null;
+  orders: MockOrder[];
 
   dietaryRestrictions: DietaryRestriction[];
+  saveDietaryRestrictions: (values: DietaryRestriction[]) => void;
 
   signIn: (
     name: string,
-    restrictions?: DietaryRestriction[]
+    restrictions?: DietaryRestriction[],
+    email?: string
   ) => void;
 
   signOut: () => void;
@@ -116,7 +122,7 @@ type AppContextValue = {
   >;
 
   placeOrder: (payment: PaymentMethod) => boolean;
-  advanceOrder: () => void;
+  advanceOrder: (orderId: string) => void;
 };
 
 const AppContext = createContext<
@@ -140,8 +146,35 @@ export function AppProvider({
   const [delivery, setDelivery] =
     useState<DeliveryInfo>(initialDelivery);
 
-  const [activeOrder, setActiveOrder] =
-    useState<MockOrder | null>(null);
+  const [orders, setOrders] = useState<MockOrder[]>([]);
+  const activeOrder = orders[0] ?? null;
+  const [orderStorageKey, setOrderStorageKey] = useState<string>();
+  const [loadedOrderStorageKey, setLoadedOrderStorageKey] = useState<string>();
+
+  React.useEffect(() => {
+    if (!orderStorageKey) return;
+
+    let current = true;
+    AsyncStorage.getItem(orderStorageKey).then(saved => {
+      if (!current) return;
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(parsed)) return;
+
+      setOrders(previous => [
+        ...previous,
+        ...parsed.filter(order => !previous.some(existing => existing.id === order.id)),
+      ]);
+      setLoadedOrderStorageKey(orderStorageKey);
+    }).catch(error => console.warn('Erro ao carregar pedidos:', error));
+
+    return () => { current = false; };
+  }, [orderStorageKey]);
+
+  React.useEffect(() => {
+    if (!orderStorageKey || orderStorageKey !== loadedOrderStorageKey) return;
+    AsyncStorage.setItem(orderStorageKey, JSON.stringify(orders))
+      .catch(error => console.warn('Erro ao salvar pedidos:', error));
+  }, [loadedOrderStorageKey, orderStorageKey, orders]);
 
   const [dietaryRestrictions, setDietaryRestrictions] =
     useState<DietaryRestriction[]>([]);
@@ -192,39 +225,38 @@ export function AppProvider({
 
   function signIn(
     name: string,
-    restrictions?: DietaryRestriction[]
+    restrictions?: DietaryRestriction[],
+    email?: string
   ) {
+    setOrderStorageKey(email ? `@bahquefome:orders:${email.trim().toLowerCase()}` : undefined);
     setUserName(name);
 
     if (restrictions !== undefined) {
-      setDietaryRestrictions(restrictions);
-
-      AsyncStorage.setItem(
-        '@bahquefome:dietaryRestrictions',
-        JSON.stringify(restrictions)
-      ).catch(error => {
-        console.warn(
-          'Erro ao salvar restrições alimentares:',
-          error
-        );
-      });
+      saveDietaryRestrictions(restrictions);
     }
+  }
+
+  function saveDietaryRestrictions(values: DietaryRestriction[]) {
+    setDietaryRestrictions(values);
+    AsyncStorage.setItem(
+      '@bahquefome:dietaryRestrictions',
+      JSON.stringify(values)
+    ).catch(error => {
+      console.warn('Erro ao salvar restrições alimentares:', error);
+    });
   }
 
   function signOut() {
     setUserName(null);
     setCart([]);
     setDelivery(initialDelivery);
-    setActiveOrder(null);
+    setOrderStorageKey(undefined);
+    setLoadedOrderStorageKey(undefined);
+    setOrders([]);
     setDietaryRestrictions([]);
 
-    AsyncStorage.removeItem(
-      '@bahquefome:dietaryRestrictions'
-    ).catch(error => {
-      console.warn(
-        'Erro ao limpar restrições:',
-        error
-      );
+    AsyncStorage.removeItem('@bahquefome:dietaryRestrictions').catch(error => {
+      console.warn('Erro ao limpar restrições:', error);
     });
   }
 
@@ -308,42 +340,29 @@ export function AppProvider({
         : 0;
 
     const order: MockOrder = {
-      id: `BF-${Date.now().toString().slice(-6)}`,
+      id: `BF-${Date.now()}`,
       items: cart.map(item => ({ ...item })),
       subtotal,
       deliveryFee,
       total: subtotal + deliveryFee,
-      delivery: { ...delivery },
+      delivery: { mode: delivery.mode },
       payment,
       statusIndex: 0,
       createdAt: new Date().toLocaleString('pt-BR'),
     };
 
-    setActiveOrder(order);
+    setOrders(previous => [order, ...previous]);
     setCart([]);
 
     return true;
   }
 
-  function advanceOrder() {
-    setActiveOrder(previous => {
-      if (!previous) {
-        return null;
-      }
-
-      const lastStep =
-        previous.delivery.mode === 'delivery'
-          ? 4
-          : 3;
-
-      return {
-        ...previous,
-        statusIndex: Math.min(
-          previous.statusIndex + 1,
-          lastStep
-        ),
-      };
-    });
+  function advanceOrder(orderId: string) {
+    setOrders(previous => previous.map(order => {
+      if (order.id !== orderId) return order;
+      const lastStep = order.delivery.mode === 'delivery' ? 4 : 3;
+      return { ...order, statusIndex: Math.min(order.statusIndex + 1, lastStep) };
+    }));
   }
 
   return (
@@ -356,7 +375,9 @@ export function AppProvider({
         cartTotal,
         delivery,
         activeOrder,
+        orders,
         dietaryRestrictions,
+        saveDietaryRestrictions,
 
         signIn,
         signOut,

@@ -29,12 +29,12 @@ type Props = NativeStackScreenProps<
 >;
 
 export default function OrderTrackingScreen({
-  navigation
+  navigation,
+  route
 }: Props) {
-  const {
-    activeOrder,
-    advanceOrder
-  } = useApp();
+  const { orders, advanceOrder } = useApp();
+  const orderId = route.params?.orderId;
+  const activeOrder = orderId ? orders.find(order => order.id === orderId) : orders[0];
 
   const stages =
     activeOrder?.delivery.mode === 'pickup'
@@ -200,7 +200,7 @@ export default function OrderTrackingScreen({
         {!finished && (
           <Pressable
             style={styles.button}
-            onPress={advanceOrder}
+            onPress={() => advanceOrder(activeOrder.id)}
           >
             <Text style={styles.buttonText}>
               Simular próxima etapa

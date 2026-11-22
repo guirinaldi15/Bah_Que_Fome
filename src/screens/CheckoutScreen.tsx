@@ -126,12 +126,28 @@ export default function CheckoutScreen({
         !delivery.street.trim() ||
         !delivery.number.trim() ||
         !delivery.district.trim() ||
-        !delivery.city.trim()
+        !delivery.city.trim() ||
+        !/^[a-z]{2}$/i.test(delivery.state.trim())
       )
     ) {
       setError(
-        'Preencha rua, número, bairro e cidade para a entrega.'
+        'Preencha rua, número, bairro, cidade e UF para a entrega.'
       );
+      return;
+    }
+
+    const phoneDigits = delivery.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      setError('Informe um telefone válido com DDD.');
+      return;
+    }
+
+    if (
+      delivery.mode === 'delivery' &&
+      (delivery.locationType === 'hotel' || delivery.locationType === 'pousada') &&
+      !delivery.establishment.trim()
+    ) {
+      setError('Informe o nome do hotel ou da pousada.');
       return;
     }
 
@@ -317,7 +333,8 @@ export default function CheckoutScreen({
                       ['residencia', 'Residência'],
                       ['hotel', 'Hotel'],
                       ['pousada', 'Pousada'],
-                      ['turistico', 'Ponto turístico']
+                      ['turistico', 'Ponto turístico'],
+                      ['other', 'Outro']
                     ] as [LocationType, string][]).map(
                       ([value, label]) => (
                         <Pressable
@@ -357,11 +374,8 @@ export default function CheckoutScreen({
                   {field('Número', 'number')}
                   {field('Bairro', 'district')}
 
-                  {field(
-                    'Cidade / UF',
-                    'city',
-                    'Ex.: Presidente Epitácio - SP'
-                  )}
+                  {field('Cidade', 'city', 'Ex.: Presidente Epitácio')}
+                  {field('UF', 'state', 'Ex.: SP')}
 
                   {field(
                     'Complemento (opcional)',
@@ -574,7 +588,7 @@ export default function CheckoutScreen({
                   { alignSelf: 'stretch' }
                 ]}
                 onPress={() =>
-                  navigation.navigate('OrderTracking')
+                  navigation.navigate('OrderTracking', { orderId: activeOrder.id })
                 }
               >
                 <Text style={styles.buttonText}>

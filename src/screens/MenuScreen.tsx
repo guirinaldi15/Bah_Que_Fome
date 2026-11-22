@@ -31,12 +31,17 @@ import { useApp } from '../contexts/AppContext';
 import {
   CATEGORIES,
   PRODUCTS,
-  formatPrice
+  formatPrice,
+  matchesDietaryPreferences
 } from '../data/products';
 
 import { getProductImage } from '../data/productImages';
 import { COLORS } from '../styles/theme';
 import BottomNav from '../components/BottomNav';
+
+function normalizeSearch(value: string) {
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
 
 type Props =
   NativeStackScreenProps<RootStackParamList, 'Menu'>;
@@ -49,7 +54,8 @@ export default function MenuScreen({
     cuisine,
     setCuisine,
     addToCart,
-    cartCount
+    cartCount,
+    dietaryRestrictions
   } = useApp();
 
   const [selectedCuisine, setSelectedCuisine] =
@@ -58,52 +64,54 @@ export default function MenuScreen({
     );
 
   const [category, setCategory] =
-    useState('Todos');
+    useState(route.params?.category ?? 'Todos');
 
   const [search, setSearch] =
     useState(route.params?.search ?? '');
 
   useEffect(() => {
-    if (route.params?.cuisine) {
-      setSelectedCuisine(route.params.cuisine);
-      setCategory('Todos');
-    }
-
-    if (route.params?.search !== undefined) {
-      setSearch(route.params.search);
-      setCategory('Todos');
-    }
-  }, [
-    route.params?.cuisine,
-    route.params?.search
-  ]);
+    setSelectedCuisine(route.params?.cuisine ?? cuisine);
+    setCategory(route.params?.category ?? 'Todos');
+    setSearch(route.params?.search ?? '');
+  }, [cuisine, route.params]);
 
   const color =
     selectedCuisine === 'italiana'
       ? COLORS.primary
       : COLORS.amber;
 
+  const [dietaryFilter, setDietaryFilter] =
+    useState<'all' | 'personal' | 'vegetarian' | 'lactose' | 'gluten'>('all');
+  const dietaryFilters = [
+    ['all', 'Todos'],
+    ['personal', 'Adequados para mim'],
+    ['vegetarian', 'Vegetarianos'],
+    ['lactose', 'Sem lactose'],
+    ['gluten', 'Sem glúten'],
+  ] as const;
+  const globalSearch = route.params?.cuisine === undefined && Boolean(route.params?.search);
   const products = useMemo(
     () =>
       PRODUCTS.filter(
         (product) =>
-          product.cuisine === selectedCuisine &&
+          (product.cuisine === selectedCuisine || (globalSearch && category === 'Todos' && Boolean(search.trim()))) &&
           (
             category === 'Todos' ||
             product.category === category
           ) &&
-          `${product.name} ${product.description}`
-            .toLowerCase()
-            .includes(search.trim().toLowerCase())
+          matchesDietaryPreferences(product,
+            dietaryFilter === 'all' ? [] :
+              dietaryFilter === 'personal' ? dietaryRestrictions : [dietaryFilter]
+          ) &&
+          normalizeSearch(`${product.name} ${product.description}`)
+            .includes(normalizeSearch(search.trim()))
       ),
-    [selectedCuisine, category, search]
+    [selectedCuisine, category, search, globalSearch, dietaryFilter, dietaryRestrictions]
   );
 
   function changeCuisine(next: Cuisine) {
-    setSelectedCuisine(next);
+    navigation.setParams({ cuisine: next, category: 'Todos', search: '' });
     setCuisine(next);
-    setCategory('Todos');
-    setSearch('');
   }
 
   return (
@@ -232,6 +240,20 @@ export default function MenuScreen({
           )
         )}
       </View>
+
+      <View style={styles.chips}>
+        {dietaryFilters.map(([value, label]) => (
+          <Pressable key={value} accessibilityRole="button"
+            accessibilityState={{ selected: dietaryFilter === value }}
+            onPress={() => setDietaryFilter(value)}
+            style={[styles.chip, dietaryFilter === value && { backgroundColor: color }]}>
+            <Text style={[styles.chipText, dietaryFilter === value && { color: '#FFF' }]}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {dietaryFilter !== 'all' && (
+        <Text style={styles.empty}>Filtro baseado nas receitas cadastradas. Consulte o restaurante sobre alergias.</Text>
+      )}
 
       <FlatList
         data={products}

@@ -22,6 +22,8 @@ import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderTrackingScreen from '../screens/OrderTrackingScreen';
 
+import { CategoriesScreen, BuildMealScreen, ProfileScreen } from '../screens/ExploreScreens';
+
 const Stack =
   createNativeStackNavigator<RootStackParamList>();
 
@@ -47,6 +49,13 @@ export default function AppNavigator() {
               name="Home"
               component={HomeScreen}
             />
+
+            <Stack.Screen
+              name="Categories"
+              component={CategoriesScreen}
+            />
+            <Stack.Screen name="BuildMeal" component={BuildMealScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
 
             <Stack.Screen
               name="Menu"

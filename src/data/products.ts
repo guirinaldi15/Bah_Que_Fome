@@ -1,3 +1,4 @@
+import type { DietaryRestriction } from '../types/dietary';
 import type { Cuisine } from '../types/navigation';
 
 export type Product = {
@@ -8,12 +9,14 @@ export type Product = {
   description: string;
   price: number;
   emoji: string;
+  allergens?: Array<'glúten' | 'lactose'>;
 };
 
 // Cardápio 100% local.
 export const PRODUCTS: Product[] = [
   {
     id: '1',
+    allergens: ['glúten', 'lactose'],
     name: 'Pizza Margherita',
     category: 'Pizzas',
     cuisine: 'italiana',
@@ -23,6 +26,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: '2',
+    allergens: ['glúten', 'lactose'],
     name: 'Pizza Funghi',
     category: 'Pizzas',
     cuisine: 'italiana',
@@ -32,6 +36,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: '3',
+    allergens: ['glúten', 'lactose'],
     name: 'Pizza Calabresa',
     category: 'Pizzas',
     cuisine: 'italiana',
@@ -146,6 +151,22 @@ export const CATEGORIES: Record<Cuisine, string[]> = {
     'Porções'
   ],
 };
+
+// Classificação das receitas de demonstração. Não certifica ausência de contaminação cruzada.
+const recipePreferences: Record<string, DietaryRestriction[]> = {
+  '1': ['vegetarian'],
+  '2': ['vegetarian'],
+  '5': ['vegetarian'],
+  '6': ['lactose', 'vegetarian', 'vegan'],
+  '7': ['vegetarian'],
+  '11': ['lactose', 'gluten', 'vegetarian', 'vegan'],
+  '12': ['lactose', 'vegetarian', 'vegan'],
+  '13': ['lactose', 'vegetarian', 'vegan'],
+};
+
+export function matchesDietaryPreferences(product: Product, restrictions: DietaryRestriction[]) {
+  return restrictions.every(restriction => recipePreferences[product.id]?.includes(restriction));
+}
 
 export function formatPrice(price: number) {
   return `R$ ${price.toFixed(2).replace('.', ',')}`;

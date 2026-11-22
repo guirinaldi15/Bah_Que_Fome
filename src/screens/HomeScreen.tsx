@@ -23,7 +23,7 @@ import type {
 } from '../types/navigation';
 
 import { useApp } from '../contexts/AppContext';
-import { PRODUCTS, formatPrice } from '../data/products';
+import { PRODUCTS, formatPrice, matchesDietaryPreferences } from '../data/products';
 import { getProductImage } from '../data/productImages';
 import { COLORS } from '../styles/theme';
 import BottomNav from '../components/BottomNav';
@@ -34,17 +34,19 @@ type Props =
 export default function HomeScreen({
   navigation
 }: Props) {
-  const { userName, signOut, setCuisine } = useApp();
+  const { userName, activeOrder, setCuisine, dietaryRestrictions } = useApp();
   const [search, setSearch] = useState('');
 
   function openCuisine(next: Cuisine) {
     setCuisine(next);
-    navigation.navigate('Menu', { cuisine: next });
+    navigation.navigate('Categories', { cuisine: next });
   }
 
   const recommended = PRODUCTS
-    .filter((product) => product.cuisine === 'italiana')
-    .slice(0, 3);
+    .filter(product => dietaryRestrictions.length
+      ? matchesDietaryPreferences(product, dietaryRestrictions)
+      : product.cuisine === 'italiana')
+    .slice(0, 5);
 
   return (
     <SafeAreaView
@@ -65,11 +67,11 @@ export default function HomeScreen({
 
           <Pressable
             style={styles.logout}
-            onPress={signOut}
-            accessibilityLabel="Sair"
+            onPress={() => navigation.navigate(activeOrder ? 'OrderTracking' : 'Profile')}
+            accessibilityLabel={activeOrder ? 'Acompanhar pedido' : 'Abrir perfil'}
           >
             <Ionicons
-              name="log-out-outline"
+              name={activeOrder ? "receipt-outline" : "person-outline"}
               color={COLORS.secondary}
               size={22}
             />
@@ -169,7 +171,11 @@ export default function HomeScreen({
           />
         </Pressable>
 
-        <View style={styles.feature}>
+        <Pressable
+          style={styles.feature}
+          onPress={() => navigation.navigate('BuildMeal')}
+          accessibilityRole="button"
+        >
           <Ionicons
             name="restaurant-outline"
             size={27}
@@ -182,15 +188,18 @@ export default function HomeScreen({
             </Text>
 
             <Text style={styles.muted}>
-              Essa função será adicionada depois do fluxo de pedido.
+              Escolha entrada, prato principal, bebida e sobremesa.
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <Text style={styles.section}>
           Recomendados para você
         </Text>
 
+        {recommended.length === 0 && (
+          <Text style={styles.muted}>O catálogo ainda não tem receitas classificadas para todas as suas restrições.</Text>
+        )}
         {recommended.map((product) => (
           <Pressable
             key={product.id}

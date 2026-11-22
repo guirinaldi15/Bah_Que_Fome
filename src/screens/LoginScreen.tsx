@@ -47,6 +47,11 @@ export default function LoginScreen() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Informe um e-mail válido.');
+      return;
+    }
+
     if (
       isRegister &&
       password !== confirmPassword
@@ -68,7 +73,8 @@ export default function LoginScreen() {
         : fallbackName,
       isRegister
         ? dietaryRestrictions
-        : undefined
+        : undefined,
+      email
     );
   }
 
@@ -93,7 +99,7 @@ export default function LoginScreen() {
         >
           <View style={styles.brandArea}>
             <Text style={styles.flags}>
-              🇮🇹   🍝   🍺   🇧🇷
+              🇮🇹
             </Text>
 
             <Text style={styles.logo}>
@@ -212,7 +218,7 @@ export default function LoginScreen() {
             style={styles.guestButton}
           >
             <Text style={styles.guestText}>
-              Continuar como visitante
+              Turista? Continuar sem cadastro
             </Text>
 
             <Ionicons
@@ -268,7 +274,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 52,
     textAlign: 'center',
-    fontStyle: 'italic',
     fontWeight: 'bold',
     lineHeight: 55,
   },

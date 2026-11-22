@@ -104,6 +104,12 @@ export default function ProductDetailsScreen({
           {product.description}
         </Text>
 
+        {!!product.allergens?.length && (
+          <Text style={styles.description}>
+            Contém {product.allergens.join(' e ')}.
+          </Text>
+        )}
+
         <View style={styles.note}>
           <Ionicons
             name="people-outline"
