@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import {
   Alert,
@@ -31,6 +31,7 @@ import {
 import type {
   DeliveryMode,
   LocationType,
+  MockOrder,
   PaymentMethod
 } from '../contexts/AppContext';
 
@@ -84,8 +85,7 @@ export default function CheckoutScreen({
     cartTotal,
     delivery,
     setDelivery,
-    placeOrder,
-    activeOrder
+    placeOrder
   } = useApp();
 
   const [step, setStep] =
@@ -95,6 +95,8 @@ export default function CheckoutScreen({
     useState<PaymentMethod>('pix');
 
   const [error, setError] = useState('');
+  const [confirmedOrder, setConfirmedOrder] = useState<MockOrder | null>(null);
+  const submittedOrder = useRef(false);
 
   const fee =
     delivery.mode === 'delivery'
@@ -156,7 +158,9 @@ export default function CheckoutScreen({
   }
 
   function finishOrder() {
-    if (!placeOrder(payment)) {
+    if (submittedOrder.current) return;
+    const order = placeOrder(payment);
+    if (!order) {
       Alert.alert(
         'Carrinho vazio',
         'Adicione produtos antes de finalizar.'
@@ -164,6 +168,8 @@ export default function CheckoutScreen({
       return;
     }
 
+    submittedOrder.current = true;
+    setConfirmedOrder(order);
     setStep('confirmed');
   }
 
@@ -558,7 +564,7 @@ export default function CheckoutScreen({
             </>
           )}
 
-          {step === 'confirmed' && activeOrder && (
+          {step === 'confirmed' && confirmedOrder && (
             <View style={styles.successBox}>
               <Ionicons
                 name="checkmark-circle"
@@ -571,11 +577,11 @@ export default function CheckoutScreen({
               </Text>
 
               <Text style={styles.small}>
-                Pedido de demonstração {activeOrder.id}
+                Pedido de demonstração {confirmedOrder.id}
               </Text>
 
               <Text style={styles.small}>
-                Total: {formatPrice(activeOrder.total)}
+                Total: {formatPrice(confirmedOrder.total)}
               </Text>
 
               <Text style={styles.small}>
@@ -588,7 +594,7 @@ export default function CheckoutScreen({
                   { alignSelf: 'stretch' }
                 ]}
                 onPress={() =>
-                  navigation.navigate('OrderTracking', { orderId: activeOrder.id })
+                  navigation.navigate('OrderTracking', { orderId: confirmedOrder.id })
                 }
               >
                 <Text style={styles.buttonText}>

@@ -2,6 +2,7 @@ import React, {
   createContext,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -9,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Product } from '../data/products';
 import type { Cuisine } from '../types/navigation';
+import { DIETARY_OPTIONS } from '../types/dietary';
 import type { DietaryRestriction } from '../types/dietary';
 
 export type CartItem = {
@@ -63,6 +65,10 @@ export type MockOrder = {
 };
 
 export const DELIVERY_FEE = 12;
+
+function lastOrderStep(mode: DeliveryMode) {
+  return mode === 'delivery' ? 4 : 3;
+}
 
 const initialDelivery: DeliveryInfo = {
   mode: 'delivery',
@@ -121,7 +127,7 @@ type AppContextValue = {
     React.SetStateAction<DeliveryInfo>
   >;
 
-  placeOrder: (payment: PaymentMethod) => boolean;
+  placeOrder: (payment: PaymentMethod) => MockOrder | null;
   advanceOrder: (orderId: string) => void;
 };
 
@@ -147,7 +153,9 @@ export function AppProvider({
     useState<DeliveryInfo>(initialDelivery);
 
   const [orders, setOrders] = useState<MockOrder[]>([]);
-  const activeOrder = orders[0] ?? null;
+  const activeOrder = orders.find(order =>
+    order.statusIndex < lastOrderStep(order.delivery.mode)
+  ) ?? null;
   const [orderStorageKey, setOrderStorageKey] = useState<string>();
   const [loadedOrderStorageKey, setLoadedOrderStorageKey] = useState<string>();
 
@@ -179,30 +187,13 @@ export function AppProvider({
   const [dietaryRestrictions, setDietaryRestrictions] =
     useState<DietaryRestriction[]>([]);
 
-  React.useEffect(() => {
-    async function loadDietaryRestrictions() {
-      try {
-        const saved = await AsyncStorage.getItem(
-          '@bahquefome:dietaryRestrictions'
-        );
+  const dietaryStorageKey = useRef<string | undefined>(undefined);
+  const dietaryRevision = useRef(0);
 
-        if (saved) {
-          const parsed = JSON.parse(saved);
-
-          if (Array.isArray(parsed)) {
-            setDietaryRestrictions(parsed);
-          }
-        }
-      } catch (error) {
-        console.warn(
-          'Erro ao carregar restrições alimentares:',
-          error
-        );
-      }
-    }
-
-    loadDietaryRestrictions();
-  }, []);
+  function persistDietaryRestrictions(key: string, values: DietaryRestriction[]) {
+    AsyncStorage.setItem(key, JSON.stringify(values))
+      .catch(error => console.warn('Erro ao salvar restrições alimentares:', error));
+  }
 
   const cartCount = useMemo(
     () =>
@@ -228,22 +219,37 @@ export function AppProvider({
     restrictions?: DietaryRestriction[],
     email?: string
   ) {
-    setOrderStorageKey(email ? `@bahquefome:orders:${email.trim().toLowerCase()}` : undefined);
-    setUserName(name);
+    const account = email?.trim().toLowerCase();
+    const key = account ? `@bahquefome:dietaryRestrictions:${account}` : undefined;
+    dietaryStorageKey.current = key;
+    const revision = ++dietaryRevision.current;
 
+    setOrderStorageKey(account ? `@bahquefome:orders:${account}` : undefined);
+    setUserName(name);
+    setDietaryRestrictions(restrictions ?? []);
+
+    if (!key) return;
     if (restrictions !== undefined) {
-      saveDietaryRestrictions(restrictions);
+      persistDietaryRestrictions(key, restrictions);
+      return;
     }
+
+    AsyncStorage.getItem(key).then(saved => {
+      if (!saved || dietaryRevision.current !== revision) return;
+      const parsed: unknown = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        setDietaryRestrictions(
+          DIETARY_OPTIONS.map(option => option.value).filter(value => parsed.includes(value))
+        );
+      }
+    }).catch(error => console.warn('Erro ao carregar restrições alimentares:', error));
   }
 
   function saveDietaryRestrictions(values: DietaryRestriction[]) {
+    ++dietaryRevision.current;
     setDietaryRestrictions(values);
-    AsyncStorage.setItem(
-      '@bahquefome:dietaryRestrictions',
-      JSON.stringify(values)
-    ).catch(error => {
-      console.warn('Erro ao salvar restrições alimentares:', error);
-    });
+    const key = dietaryStorageKey.current;
+    if (key) persistDietaryRestrictions(key, values);
   }
 
   function signOut() {
@@ -253,11 +259,9 @@ export function AppProvider({
     setOrderStorageKey(undefined);
     setLoadedOrderStorageKey(undefined);
     setOrders([]);
+    dietaryStorageKey.current = undefined;
+    ++dietaryRevision.current;
     setDietaryRestrictions([]);
-
-    AsyncStorage.removeItem('@bahquefome:dietaryRestrictions').catch(error => {
-      console.warn('Erro ao limpar restrições:', error);
-    });
   }
 
   function addToCart(
@@ -327,9 +331,9 @@ export function AppProvider({
 
   function placeOrder(
     payment: PaymentMethod
-  ): boolean {
+  ): MockOrder | null {
     if (cart.length === 0) {
-      return false;
+      return null;
     }
 
     const subtotal = cartTotal;
@@ -354,13 +358,13 @@ export function AppProvider({
     setOrders(previous => [order, ...previous]);
     setCart([]);
 
-    return true;
+    return order;
   }
 
   function advanceOrder(orderId: string) {
     setOrders(previous => previous.map(order => {
       if (order.id !== orderId) return order;
-      const lastStep = order.delivery.mode === 'delivery' ? 4 : 3;
+      const lastStep = lastOrderStep(order.delivery.mode);
       return { ...order, statusIndex: Math.min(order.statusIndex + 1, lastStep) };
     }));
   }

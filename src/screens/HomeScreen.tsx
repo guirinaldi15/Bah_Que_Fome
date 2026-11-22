@@ -67,7 +67,13 @@ export default function HomeScreen({
 
           <Pressable
             style={styles.logout}
-            onPress={() => navigation.navigate(activeOrder ? 'OrderTracking' : 'Profile')}
+            onPress={() => {
+              if (activeOrder) {
+                navigation.navigate('OrderTracking', { orderId: activeOrder.id });
+              } else {
+                navigation.navigate('Profile');
+              }
+            }}
             accessibilityLabel={activeOrder ? 'Acompanhar pedido' : 'Abrir perfil'}
           >
             <Ionicons
