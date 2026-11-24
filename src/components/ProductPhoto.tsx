@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { ImageProps } from 'react-native';
 
-import { getProductImage } from '../data/productImages';
 import type { Product } from '../data/products';
+import { getProductImage } from '../data/productImages';
 import { COLORS } from '../styles/theme';
 
 type Props = Pick<ImageProps, 'style' | 'resizeMode'> & {
@@ -11,10 +11,15 @@ type Props = Pick<ImageProps, 'style' | 'resizeMode'> & {
 };
 
 export default function ProductPhoto({ product, style, resizeMode }: Props) {
+  return <ProductPhotoContent key={product.id} product={product} style={style} resizeMode={resizeMode} />;
+}
+
+function ProductPhotoContent({ product, style, resizeMode }: Props) {
+  const [failed, setFailed] = useState(false);
   const source = getProductImage(product.id);
 
-  if (source) {
-    return <Image source={source} style={style} resizeMode={resizeMode} />;
+  if (source && !failed) {
+    return <Image source={source} style={style} resizeMode={resizeMode} onError={() => setFailed(true)} />;
   }
 
   return (
@@ -31,7 +36,5 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.muted,
     overflow: 'hidden',
   },
-  emoji: {
-    fontSize: 24,
-  },
+  emoji: { fontSize: 24 },
 });
