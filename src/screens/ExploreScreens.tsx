@@ -152,6 +152,7 @@ export function ProfileScreen({ navigation }: NativeStackScreenProps<RootStackPa
           detail={`${order.createdAt} · ${formatPrice(order.total)}`}
           onPress={() => navigation.navigate('OrderTracking', { orderId: order.id })} />
       ))}
+      <Row label="Pedido em grupo" onPress={() => navigation.navigate('GroupOrder')} />
       <Row label="Sair" onPress={signOut} />
     </Screen>
   );

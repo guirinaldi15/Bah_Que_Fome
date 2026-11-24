@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Home: undefined;
   Categories: { cuisine?: Cuisine } | undefined;
   BuildMeal: undefined;
+  GroupOrder: undefined;
   Profile: undefined;
   Menu: { cuisine?: Cuisine; search?: string; category?: string } | undefined;
   ProductDetails: { productId: string };

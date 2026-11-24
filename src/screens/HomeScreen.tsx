@@ -200,6 +200,18 @@ export default function HomeScreen({
           </View>
         </Pressable>
 
+        <Pressable
+          style={styles.feature}
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('GroupOrder')}
+        >
+          <Ionicons name="people-outline" size={27} color={COLORS.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.featureTitle}>Pedido em grupo</Text>
+            <Text style={styles.muted}>Compartilhe o resumo do carrinho.</Text>
+          </View>
+        </Pressable>
+
         <Text style={styles.section}>
           Recomendados para você
         </Text>

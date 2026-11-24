@@ -21,6 +21,7 @@ import ProductDetailsScreen from '../screens/ProductDetailsScreen';
 import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderTrackingScreen from '../screens/OrderTrackingScreen';
+import GroupOrderScreen from '../screens/GroupOrderScreen';
 
 import { CategoriesScreen, BuildMealScreen, ProfileScreen } from '../screens/ExploreScreens';
 
@@ -56,6 +57,7 @@ export default function AppNavigator() {
             />
             <Stack.Screen name="BuildMeal" component={BuildMealScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="GroupOrder" component={GroupOrderScreen} />
 
             <Stack.Screen
               name="Menu"
