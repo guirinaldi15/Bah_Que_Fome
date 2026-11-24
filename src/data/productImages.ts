@@ -18,6 +18,6 @@ const images: Record<string, ImageSourcePropType> = {
 
 export function getProductImage(
   id: string
-): ImageSourcePropType {
-  return images[id] ?? images['1'];
+): ImageSourcePropType | undefined {
+  return images[id];
 }

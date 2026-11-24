@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,7 +10,7 @@ import DietaryRestrictionsSelector from '../components/DietaryRestrictionsSelect
 import { useApp } from '../contexts/AppContext';
 import { CATEGORIES, PRODUCTS, formatPrice } from '../data/products';
 import type { Product } from '../data/products';
-import { getProductImage } from '../data/productImages';
+import ProductPhoto from '../components/ProductPhoto';
 import { COLORS } from '../styles/theme';
 import type { Cuisine, RootStackParamList } from '../types/navigation';
 
@@ -76,8 +76,8 @@ export function CategoriesScreen({ navigation, route }: NativeStackScreenProps<R
 }
 
 const mealCourses = [
-  { label: '🥗 Entrada', categories: ['Entradas', 'Porções'] },
-  { label: '🍝 Prato principal', categories: ['Pizzas', 'Massas'] },
+  { label: '🥗 Entrada', categories: ['Entradas', 'Saladas', 'Porções'] },
+  { label: '🍝 Prato principal', categories: ['Pizzas', 'Massas', 'Risotos'] },
   { label: '🍺 Bebida', categories: ['Chopp', 'Drinks', 'Bebidas'] },
   { label: '🍰 Sobremesa', categories: ['Sobremesas'] },
 ];
@@ -114,7 +114,7 @@ export function BuildMealScreen({ navigation }: NativeStackScreenProps<RootStack
                       setChoices(previous => ({ ...previous, [course.label]: product }));
                       setExpanded(undefined);
                     }}>
-                    <Image source={getProductImage(product.id)} style={styles.image} />
+                    <ProductPhoto product={product} style={styles.image} />
                     <View style={styles.rowContent}>
                       <Text style={styles.label}>{product.name}</Text>
                       <Text style={styles.secondary}>{formatPrice(product.price)}</Text>

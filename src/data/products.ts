@@ -134,6 +134,64 @@ export const PRODUCTS: Product[] = [
     price: 27.9,
     emoji: '🍟'
   },
+  {
+    id: "14",
+    name: "Pizza Quattro Formaggi",
+    category: "Pizzas",
+    cuisine: "italiana",
+    description: "Molho de tomate, muçarela, gorgonzola, parmesão e provolone.",
+    price: 62.9,
+    emoji: "🍕",
+    allergens: ["glúten", "lactose"],
+  },
+  {
+    id: "15",
+    name: "Vinho Tinto Chianti 250 ml",
+    category: "Bebidas",
+    cuisine: "italiana",
+    description: "Vinho toscano encorpado com notas de cereja e especiarias.",
+    price: 32.9,
+    emoji: "🍷",
+  },
+  {
+    id: "16",
+    name: "Risoto de Funghi",
+    category: "Risotos",
+    cuisine: "italiana",
+    description: "Arroz arbóreo cremoso com cogumelos, manteiga e parmesão.",
+    price: 58.9,
+    emoji: "🍚",
+    allergens: ["lactose"],
+  },
+  {
+    id: "17",
+    name: "Salada Caprese",
+    category: "Saladas",
+    cuisine: "italiana",
+    description: "Tomate, muçarela de búfala, manjericão e azeite.",
+    price: 32.9,
+    emoji: "🥗",
+    allergens: ["lactose"],
+  },
+  {
+    id: "18",
+    name: "Bolinho de Costela",
+    category: "Porções",
+    cuisine: "choperia",
+    description: "Bolinhos crocantes de costela bovina desfiada com maionese da casa.",
+    price: 36.9,
+    emoji: "🍖",
+    allergens: ["glúten"],
+  },
+  {
+    id: "19",
+    name: "Limonada de Hortelã 350 ml",
+    category: "Bebidas",
+    cuisine: "choperia",
+    description: "Limão espremido, hortelã fresca e gelo.",
+    price: 13.9,
+    emoji: "🍋",
+  },
 ];
 
 export const CATEGORIES: Record<Cuisine, string[]> = {
@@ -142,12 +200,16 @@ export const CATEGORIES: Record<Cuisine, string[]> = {
     'Entradas',
     'Pizzas',
     'Massas',
+    'Risotos',
+    'Saladas',
+    'Bebidas',
     'Sobremesas'
   ],
   choperia: [
     'Todos',
     'Chopp',
     'Drinks',
+    'Bebidas',
     'Porções'
   ],
 };
@@ -162,6 +224,10 @@ const recipePreferences: Record<string, DietaryRestriction[]> = {
   '11': ['lactose', 'gluten', 'vegetarian', 'vegan'],
   '12': ['lactose', 'vegetarian', 'vegan'],
   '13': ['lactose', 'vegetarian', 'vegan'],
+  '14': ["vegetarian"],
+  '16': ["vegetarian"],
+  '17': ["vegetarian"],
+  '19': ["lactose", "gluten", "vegetarian", "vegan"],
 };
 
 export function matchesDietaryPreferences(product: Product, restrictions: DietaryRestriction[]) {

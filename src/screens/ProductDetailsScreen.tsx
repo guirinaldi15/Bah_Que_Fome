@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,7 +22,7 @@ import type {
 import { useApp } from '../contexts/AppContext';
 import { PRODUCTS, formatPrice } from '../data/products';
 import { PRODUCT_DETAILS } from '../data/productDetails';
-import { getProductImage } from '../data/productImages';
+import ProductPhoto from '../components/ProductPhoto';
 import { COLORS } from '../styles/theme';
 
 type Props = NativeStackScreenProps<
@@ -80,8 +79,8 @@ export default function ProductDetailsScreen({
           </Text>
         </Pressable>
 
-        <Image
-          source={getProductImage(product.id)}
+        <ProductPhoto
+          product={product}
           style={styles.hero}
           resizeMode="cover"
         />

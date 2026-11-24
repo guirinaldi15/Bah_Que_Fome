@@ -6,7 +6,6 @@ import React, {
 
 import {
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -35,7 +34,7 @@ import {
   matchesDietaryPreferences
 } from '../data/products';
 
-import { getProductImage } from '../data/productImages';
+import ProductPhoto from '../components/ProductPhoto';
 import { COLORS } from '../styles/theme';
 import BottomNav from '../components/BottomNav';
 
@@ -274,8 +273,8 @@ export default function MenuScreen({
               })
             }
           >
-            <Image
-              source={getProductImage(item.id)}
+            <ProductPhoto
+              product={item}
               style={styles.photo}
             />
 

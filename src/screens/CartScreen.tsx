@@ -1,7 +1,6 @@
 import React from 'react';
 
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,7 +21,7 @@ import type {
 
 import { useApp } from '../contexts/AppContext';
 import { formatPrice } from '../data/products';
-import { getProductImage } from '../data/productImages';
+import ProductPhoto from '../components/ProductPhoto';
 import { COLORS } from '../styles/theme';
 import BottomNav from '../components/BottomNav';
 
@@ -92,8 +91,8 @@ export default function CartScreen({
                 key={item.product.id}
                 style={styles.card}
               >
-                <Image
-                  source={getProductImage(item.product.id)}
+                <ProductPhoto
+                  product={item.product}
                   style={styles.photo}
                 />
 

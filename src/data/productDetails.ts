@@ -178,5 +178,41 @@ export const PRODUCT_DETAILS: Record<string, ProductExtra> = {
     curiosity:
       'A polenta tem raízes na gastronomia italiana e se popularizou no Brasil.',
     serves: '1 a 2 pessoas'
-  }
+  },
+  '14': {
+    ingredients: ["Massa de trigo", "Molho de tomate", "Muçarela", "Gorgonzola", "Parmesão", "Provolone"],
+    origin: "Itália",
+    curiosity: "O sabor dos quatro queijos vai do suave ao mais intenso.",
+    serves: "1 a 2 pessoas",
+  },
+  '15': {
+    ingredients: ["Vinho tinto Chianti"],
+    origin: "Toscana, Itália",
+    curiosity: "Uma opção para acompanhar pizzas e massas com molho de tomate.",
+    serves: "250 ml",
+  },
+  '16': {
+    ingredients: ["Arroz arbóreo", "Cogumelos", "Caldo de legumes", "Manteiga", "Parmesão"],
+    origin: "Itália",
+    curiosity: "O arroz arbóreo libera amido durante o preparo e deixa o risoto cremoso.",
+    serves: "1 pessoa",
+  },
+  '17': {
+    ingredients: ["Tomate", "Muçarela de búfala", "Manjericão", "Azeite"],
+    origin: "Itália",
+    curiosity: "Tomate, muçarela e manjericão compõem as cores da bandeira italiana.",
+    serves: "1 pessoa",
+  },
+  '18': {
+    ingredients: ["Costela bovina", "Farinha de trigo", "Farinha de rosca", "Ovo", "Maionese da casa"],
+    origin: "Brasil",
+    curiosity: "A costela cozida lentamente dá sabor ao recheio.",
+    serves: "6 unidades",
+  },
+  '19': {
+    ingredients: ["Limão", "Hortelã", "Água", "Açúcar", "Gelo"],
+    origin: "Brasil",
+    curiosity: "Uma bebida sem álcool para acompanhar porções.",
+    serves: "350 ml",
+  },
 };

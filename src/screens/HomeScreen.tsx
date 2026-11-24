@@ -24,6 +24,7 @@ import type {
 
 import { useApp } from '../contexts/AppContext';
 import { PRODUCTS, formatPrice, matchesDietaryPreferences } from '../data/products';
+import ProductPhoto from '../components/ProductPhoto';
 import { getProductImage } from '../data/productImages';
 import { COLORS } from '../styles/theme';
 import BottomNav from '../components/BottomNav';
@@ -216,8 +217,8 @@ export default function HomeScreen({
               })
             }
           >
-            <Image
-              source={getProductImage(product.id)}
+            <ProductPhoto
+              product={product}
               style={styles.productPhoto}
             />
 
